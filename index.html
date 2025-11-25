@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>כיף עם הא-ב</title>
+    
+    <!-- הגדרות לאייפון כדי שיראה כמו אפליקציה -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="משחק אותיות">
+
+    <!-- טעינת Tailwind CSS לעיצוב -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- טעינת אייקונים -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* מניעת בחירת טקסט כדי שירגיש כמו אפליקציה */
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        /* הסתרת פס גלילה אבל אפשור גלילה */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* אנימציות */
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        .zoom-in { animation: zoomIn 0.3s ease-out; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body class="bg-blue-50 min-h-screen text-right">
+
+    <!-- כותרת -->
+    <div class="max-w-4xl mx-auto text-center pt-10 pb-6 px-4">
+        <h1 class="text-4xl md:text-6xl font-bold text-blue-600 mb-2 drop-shadow-sm">
+            כֵּיף עִם הָא-ב 🎨
+        </h1>
+        <p class="text-xl text-blue-400 font-medium">
+            לַחֲצוּ עַל אוֹת כְּדֵי לִשְׁמֹעַ וּלְשַׂחֵק!
+        </p>
+    </div>
+
+    <!-- לוח האותיות -->
+    <div id="game-board" class="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4 pb-20">
+        <!-- האותיות יוזרקו לכאן דרך JavaScript -->
+    </div>
+
+    <!-- חלונית (Modal) -->
+    <div id="modal" class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm overflow-y-auto fade-in">
+        <div class="flex min-h-full items-center justify-center p-2 sm:p-4">
+            <div class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-yellow-300 my-4 zoom-in">
+                
+                <!-- כפתור סגירה -->
+                <button onclick="closeModal()" class="absolute top-4 left-4 p-2 bg-red-100 text-red-500 rounded-full hover:bg-red-200 z-20 shadow-sm">
+                    <i data-lucide="x" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+                </button>
+
+                <!-- כפתורי ניווט -->
+                <button onclick="navigatePrev(event)" class="absolute top-1/2 right-2 -translate-y-1/2 z-10 p-2 sm:p-4 bg-white/80 text-blue-600 rounded-full shadow-lg border-2 border-blue-200 active:scale-95">
+                    <i data-lucide="chevron-right" class="w-8 h-8 sm:w-10 sm:h-10"></i>
+                </button>
+
+                <button onclick="navigateNext(event)" class="absolute top-1/2 left-2 -translate-y-1/2 z-10 p-2 sm:p-4 bg-white/80 text-blue-600 rounded-full shadow-lg border-2 border-blue-200 active:scale-95">
+                    <i data-lucide="chevron-left" class="w-8 h-8 sm:w-10 sm:h-10"></i>
+                </button>
+
+                <!-- תוכן החלונית -->
+                <div class="flex flex-col items-center p-6 sm:p-12 bg-gradient-to-b from-yellow-50 to-white px-12 sm:px-24">
+                    
+                    <!-- האות הגדולה -->
+                    <div class="text-center w-full mt-4">
+                        <div id="modal-letter" class="text-8xl md:text-9xl font-bold text-blue-600 drop-shadow-md select-none"></div>
+                        
+                        <button onclick="replayLetter()" class="mt-6 flex items-center justify-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full font-bold text-lg hover:bg-blue-600 shadow-md active:scale-95 mx-auto">
+                            <i data-lucide="volume-2" class="w-6 h-6"></i>
+                            <span>הַשְׁמַע שׁוּב</span>
+                        </button>
+                    </div>
+
+                    <div class="w-full h-1 bg-blue-100 rounded-full my-8"></div>
+
+                    <!-- מילים -->
+                    <div class="w-full">
+                        <h3 class="text-center text-xl text-gray-500 mb-6 font-bold" id="modal-subtitle"></h3>
+                        <div id="words-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <!-- המילים יוזרקו לכאן -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center text-blue-300 py-6 text-sm">
+        לוֹמְדִים עִבְרִית בְּכֵיף! 🇮🇱
+    </footer>
+
+    <script>
+        // נתונים
+        const alphabetData = [
+            { letter: 'א', name: 'אָלֶף', phonetic: 'Aleph', words: [{ text: 'אַרְנָב', emoji: '🐰' }, { text: 'אֲבַטִּיחַ', emoji: '🍉' }, { text: 'אַרְיֵה', emoji: '🦁' }] },
+            { letter: 'ב', name: 'בֵּית', phonetic: 'Bet', words: [{ text: 'בַּיִת', emoji: '🏠' }, { text: 'בַּנָּנָה', emoji: '🍌' }, { text: 'בַּרְוָז', emoji: '🦆' }] },
+            { letter: 'ג', name: 'גִּימֶל', phonetic: 'Gimel', words: [{ text: 'גָּמָל', emoji: '🐫' }, { text: 'גְּלִידָה', emoji: '🍦' }, { text: 'גִּיטָרָה', emoji: '🎸' }] },
+            { letter: 'ד', name: 'דָּלֶת', phonetic: 'Dalet', words: [{ text: 'דֶּלֶת', emoji: '🚪' }, { text: 'דָּג', emoji: '🐟' }, { text: 'דֻּבִּי', emoji: '🧸' }] },
+            { letter: 'ה', name: 'הֵא', phonetic: 'Hay', words: [{ text: 'הַר', emoji: '⛰️' }, { text: 'הֶלִיקוֹפְּטֵר', emoji: '🚁' }, { text: 'הִיפּוֹפּוֹטָם', emoji: '🦛' }] },
+            { letter: 'ו', name: 'וָיו', phonetic: 'Vav', words: [{ text: 'וֶרֶד', emoji: '🌹' }, { text: 'וִילוֹן', emoji: '🪟' }, { text: 'וַפְל', emoji: '🧇' }] },
+            { letter: 'ז', name: 'זַיִן', phonetic: 'Zayin', words: [{ text: 'זְבּוּב', emoji: '🪰' }, { text: 'זֶבְּרָה', emoji: '🦓' }, { text: 'זַיִת', emoji: '🫒' }] },
+            { letter: 'ח', name: 'חֵית', phonetic: 'חֵית', words: [{ text: 'חָתוּל', emoji: '🐈' }, { text: 'חַלּוֹן', emoji: '🪟' }, { text: 'חַמָּנִיָּה', emoji: '🌻' }] },
+            { letter: 'ט', name: 'טֵית', phonetic: 'Tet', words: [{ text: 'טֶלֶפוֹן', emoji: '☎️' }, { text: 'טַוָּס', emoji: '🦚' }, { text: 'טִיל', emoji: '🚀' }] },
+            { letter: 'י', name: 'יוֹד', phonetic: 'Yod', words: [{ text: 'יָד', emoji: '✋' }, { text: 'יָרֵחַ', emoji: '🌙' }, { text: 'יַנְשׁוּף', emoji: '🦉' }] },
+            { letter: 'כ', name: 'כַּף', phonetic: 'Kaf', words: [{ text: 'כַּדּוּר', emoji: '⚽' }, { text: 'כֶּלֶב', emoji: '🐕' }, { text: 'כּוֹבַע', emoji: '🧢' }] },
+            { letter: 'ל', name: 'לָמֶד', phonetic: 'Lah-med', words: [{ text: 'לִימוֹן', emoji: '🍋' }, { text: 'לֵב', emoji: '❤️' }, { text: 'לִוְיָתָן', emoji: '🐋' }] },
+            { letter: 'מ', name: 'מֵם', phonetic: 'Mem', words: [{ text: 'מְכוֹנִית', emoji: '🚗' }, { text: 'מַטּוֹס', emoji: '✈️' }, { text: 'מֶלֶךְ', emoji: '👑' }] },
+            { letter: 'נ', name: 'נוּן', phonetic: 'Noon', words: [{ text: 'נֵר', emoji: '🕯️' }, { text: 'נָחָשׁ', emoji: '🐍' }, { text: 'נַעַל', emoji: '👟' }] },
+            { letter: 'ס', name: 'סָמֶךְ', phonetic: 'סָמֶךְ', words: [{ text: 'סוּס', emoji: '🐴' }, { text: 'סֵפֶר', emoji: '📖' }, { text: 'סֻכָּרִיָּה', emoji: '🍬' }] },
+            { letter: 'ע', name: 'עַיִן', phonetic: 'Ah-yin', words: [{ text: 'עַיִן', emoji: '👁️' }, { text: 'עֵץ', emoji: '🌳' }, { text: 'עוּגָה', emoji: '🎂' }] },
+            { letter: 'פ', name: 'פֵּא', phonetic: 'Pay', words: [{ text: 'פִּיל', emoji: '🐘' }, { text: 'פַּרְפַּר', emoji: '🦋' }, { text: 'פֶּרַח', emoji: '🌸' }] },
+            { letter: 'צ', name: 'צָדִי', phonetic: 'צַדִּיק', words: [{ text: 'צָב', emoji: '🐢' }, { text: 'צִפּוֹר', emoji: '🐦' }, { text: 'צְפַרְדֵּעַ', emoji: '🐸' }] },
+            { letter: 'ק', name: 'קוּף', phonetic: 'Koof', words: [{ text: 'קוֹף', emoji: '🐒' }, { text: 'קִיפּוֹד', emoji: '🦔' }, { text: 'קַקְטוּס', emoji: '🌵' }] },
+            { letter: 'ר', name: 'רֵישׁ', phonetic: 'Resh', words: [{ text: 'רַכֶּבֶת', emoji: '🚂' }, { text: 'רֹאשׁ', emoji: '🗣️' }, { text: 'רְמְזוֹר', emoji: '🚦' }] },
+            { letter: 'ש', name: 'שִׁין', phonetic: 'Sheen', words: [{ text: 'שֶׁמֶשׁ', emoji: '☀️' }, { text: 'שָׁעוֹן', emoji: '⌚' }, { text: 'שׁוֹקוֹלָד', emoji: '🍫' }] },
+            { letter: 'ת', name: 'תָּיו', phonetic: 'Tav', words: [{ text: 'תַּפּוּחַ', emoji: '🍎' }, { text: 'תּוּת', emoji: '🍓' }, { text: 'תִּינוֹק', emoji: '👶' }] }
+        ];
+
+        let selectedIndex = null;
+        let voices = [];
+
+        // אתחול אייקונים
+        lucide.createIcons();
+
+        // טעינת קולות
+        function loadVoices() {
+            voices = window.speechSynthesis.getVoices();
+        }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
+        // פונקציית הקראה
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // זיהוי עברית
+            const isHebrew = /[\u0590-\u05FF]/.test(text);
+            const lang = isHebrew ? 'he-IL' : 'en-US';
+            
+            // מציאת קול מתאים
+            const targetVoice = voices.find(v => v.lang.includes(isHebrew ? 'he' : 'en'));
+            if (targetVoice) utterance.voice = targetVoice;
+            
+            utterance.lang = lang;
+            
+            // התאמות לילדים
+            if (isHebrew) {
+                utterance.pitch = 1.2;
+                utterance.rate = 0.8;
+            } else {
+                utterance.pitch = 1.1;
+                utterance.rate = 0.75;
+            }
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // יצירת הלוח
+        const board = document.getElementById('game-board');
+        alphabetData.forEach((item, index) => {
+            const btn = document.createElement('button');
+            btn.className = "bg-white rounded-2xl shadow-lg border-b-4 border-blue-200 active:border-b-0 active:translate-y-1 transition-all duration-150 p-6 flex flex-col items-center justify-center hover:bg-yellow-50 focus:outline-none";
+            btn.onclick = () => openModal(index);
+            
+            btn.innerHTML = `
+                <span class="text-6xl font-bold text-gray-800 mb-2">${item.letter}</span>
+                <span class="text-gray-400 text-sm font-medium">${item.name}</span>
+            `;
+            board.appendChild(btn);
+        });
+
+        // לוגיקה של חלון קופץ (Modal)
+        const modal = document.getElementById('modal');
+        const modalLetter = document.getElementById('modal-letter');
+        const modalSubtitle = document.getElementById('modal-subtitle');
+        const wordsContainer = document.getElementById('words-container');
+
+        function openModal(index) {
+            selectedIndex = index;
+            updateModalContent();
+            modal.classList.remove('hidden');
+            
+            const item = alphabetData[index];
+            speak(item.phonetic);
+        }
+
+        function updateModalContent() {
+            if (selectedIndex === null) return;
+            const item = alphabetData[selectedIndex];
+            
+            modalLetter.innerText = item.letter;
+            modalSubtitle.innerText = `מִילִּים הַמַּתְחִילוֹת בָּאוֹת ${item.letter}:`;
+            
+            wordsContainer.innerHTML = '';
+            item.words.forEach(word => {
+                const wordBtn = document.createElement('button');
+                wordBtn.className = "flex flex-col items-center justify-center bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all active:scale-95 shadow-sm";
+                wordBtn.onclick = () => speak(word.text);
+                
+                wordBtn.innerHTML = `
+                    <span class="text-6xl mb-3 filter drop-shadow-sm">${word.emoji}</span>
+                    <span class="text-2xl font-bold text-gray-700">${word.text}</span>
+                `;
+                wordsContainer.appendChild(wordBtn);
+            });
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            selectedIndex = null;
+            window.speechSynthesis.cancel();
+        }
+
+        function replayLetter() {
+            if (selectedIndex !== null) {
+                speak(alphabetData[selectedIndex].phonetic);
+            }
+        }
+
+        function navigateNext(e) {
+            e.stopPropagation();
+            if (selectedIndex !== null) {
+                selectedIndex = (selectedIndex + 1) % alphabetData.length;
+                updateModalContent();
+                speak(alphabetData[selectedIndex].phonetic);
+            }
+        }
+
+        function navigatePrev(e) {
+            e.stopPropagation();
+            if (selectedIndex !== null) {
+                selectedIndex = (selectedIndex - 1 + alphabetData.length) % alphabetData.length;
+                updateModalContent();
+                speak(alphabetData[selectedIndex].phonetic);
+            }
+        }
+    </script>
+</body>
+</html>
