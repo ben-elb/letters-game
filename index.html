@@ -5,112 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>כיף עם הא-ב</title>
     
-    <!-- הגדרות לאייפון כדי שיראה כמו אפליקציה -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="משחק אותיות">
 
-    <!-- טעינת Tailwind CSS לעיצוב -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- טעינת אייקונים -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- ספרייה לקונפטי -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
-        /* מניעת בחירת טקסט כדי שירגיש כמו אפליקציה */
         body {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
             font-family: system-ui, -apple-system, sans-serif;
+            padding-bottom: 80px; /* מקום לתפריט התחתון */
         }
         
-        /* הסתרת פס גלילה אבל אפשור גלילה */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* אנימציות */
         .fade-in { animation: fadeIn 0.3s ease-out; }
         .zoom-in { animation: zoomIn 0.3s ease-out; }
-        
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        .bounce { animation: bounce 0.5s infinite alternate; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes shake { 
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
     </style>
 </head>
 <body class="bg-blue-50 min-h-screen text-right">
 
-    <!-- כותרת -->
-    <div class="max-w-4xl mx-auto text-center pt-10 pb-6 px-4">
-        <h1 class="text-4xl md:text-6xl font-bold text-blue-600 mb-2 drop-shadow-sm">
+    <!-- כותרת ראשית (משתנה לפי הטאב) -->
+    <div class="max-w-4xl mx-auto text-center pt-10 pb-4 px-4">
+        <h1 id="main-title" class="text-4xl md:text-6xl font-bold text-blue-600 mb-2 drop-shadow-sm">
             כֵּיף עִם הָא-ב 🎨
         </h1>
-        <p class="text-xl text-blue-400 font-medium">
+        <p id="sub-title" class="text-xl text-blue-400 font-medium">
             לַחֲצוּ עַל אוֹת כְּדֵי לִשְׁמֹעַ וּלְשַׂחֵק!
         </p>
     </div>
 
-    <!-- לוח האותיות -->
-    <div id="game-board" class="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4 pb-20">
-        <!-- האותיות יוזרקו לכאן דרך JavaScript -->
+    <!-- ========================= -->
+    <!-- אזור הלימוד (Learning View) -->
+    <!-- ========================= -->
+    <div id="view-learn" class="fade-in">
+        <div id="game-board" class="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4">
+            <!-- האותיות יוזרקו לכאן -->
+        </div>
     </div>
 
-    <!-- חלונית (Modal) -->
-    <div id="modal" class="fixed inset-0 z-50 hidden bg-black/40 backdrop-blur-sm overflow-y-auto fade-in">
+    <!-- ========================= -->
+    <!-- אזור המבחן (Quiz View) -->
+    <!-- ========================= -->
+    <div id="view-quiz" class="hidden fade-in px-4">
+        <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-6 border-4 border-purple-200 mt-4 relative">
+            
+            <!-- ניקוד -->
+            <div class="absolute top-4 left-4 flex items-center gap-2 bg-yellow-100 px-3 py-1 rounded-full">
+                <i data-lucide="star" class="text-yellow-500 fill-yellow-500 w-5 h-5"></i>
+                <span id="score-display" class="font-bold text-yellow-700 text-lg">0</span>
+            </div>
+
+            <!-- אזור השאלה -->
+            <div class="text-center mb-8 mt-6">
+                <button onclick="playQuizPrompt()" class="bg-purple-100 hover:bg-purple-200 text-purple-600 p-6 rounded-full transition-all active:scale-95 shadow-md mx-auto block mb-4">
+                    <i data-lucide="volume-2" class="w-12 h-12"></i>
+                </button>
+                <h2 class="text-2xl font-bold text-gray-700">אֵיפֹה הָאוֹת <span id="quiz-target-letter" class="text-purple-600 text-3xl">?</span></h2>
+            </div>
+
+            <!-- אפשרויות תשובה -->
+            <div id="quiz-options" class="grid grid-cols-2 gap-4">
+                <!-- האפשרויות יוזרקו לכאן -->
+            </div>
+            
+            <div id="feedback-msg" class="text-center mt-6 h-8 font-bold text-xl"></div>
+        </div>
+    </div>
+
+    <!-- ========================= -->
+    <!-- חלונית לימוד (Modal) -->
+    <!-- ========================= -->
+    <div id="modal" class="fixed inset-0 z-40 hidden bg-black/40 backdrop-blur-sm overflow-y-auto fade-in">
         <div class="flex min-h-full items-center justify-center p-2 sm:p-4">
             <div class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-yellow-300 my-4 zoom-in">
-                
-                <!-- כפתור סגירה -->
-                <button onclick="closeModal()" class="absolute top-4 left-4 p-2 bg-red-100 text-red-500 rounded-full hover:bg-red-200 z-20 shadow-sm">
-                    <i data-lucide="x" class="w-6 h-6 sm:w-8 sm:h-8"></i>
-                </button>
+                <button onclick="closeModal()" class="absolute top-4 left-4 p-2 bg-red-100 text-red-500 rounded-full hover:bg-red-200 z-20 shadow-sm"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <button onclick="navigatePrev(event)" class="absolute top-1/2 right-2 -translate-y-1/2 z-10 p-2 sm:p-4 bg-white/80 text-blue-600 rounded-full shadow-lg border-2 border-blue-200 active:scale-95"><i data-lucide="chevron-right" class="w-8 h-8"></i></button>
+                <button onclick="navigateNext(event)" class="absolute top-1/2 left-2 -translate-y-1/2 z-10 p-2 sm:p-4 bg-white/80 text-blue-600 rounded-full shadow-lg border-2 border-blue-200 active:scale-95"><i data-lucide="chevron-left" class="w-8 h-8"></i></button>
 
-                <!-- כפתורי ניווט -->
-                <button onclick="navigatePrev(event)" class="absolute top-1/2 right-2 -translate-y-1/2 z-10 p-2 sm:p-4 bg-white/80 text-blue-600 rounded-full shadow-lg border-2 border-blue-200 active:scale-95">
-                    <i data-lucide="chevron-right" class="w-8 h-8 sm:w-10 sm:h-10"></i>
-                </button>
-
-                <button onclick="navigateNext(event)" class="absolute top-1/2 left-2 -translate-y-1/2 z-10 p-2 sm:p-4 bg-white/80 text-blue-600 rounded-full shadow-lg border-2 border-blue-200 active:scale-95">
-                    <i data-lucide="chevron-left" class="w-8 h-8 sm:w-10 sm:h-10"></i>
-                </button>
-
-                <!-- תוכן החלונית -->
                 <div class="flex flex-col items-center p-6 sm:p-12 bg-gradient-to-b from-yellow-50 to-white px-12 sm:px-24">
-                    
-                    <!-- האות הגדולה -->
                     <div class="text-center w-full mt-4">
                         <div id="modal-letter" class="text-8xl md:text-9xl font-bold text-blue-600 drop-shadow-md select-none"></div>
-                        
                         <button onclick="replayLetter()" class="mt-6 flex items-center justify-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full font-bold text-lg hover:bg-blue-600 shadow-md active:scale-95 mx-auto">
-                            <i data-lucide="volume-2" class="w-6 h-6"></i>
-                            <span>הַשְׁמַע שׁוּב</span>
+                            <i data-lucide="volume-2" class="w-6 h-6"></i> <span>הַשְׁמַע שׁוּב</span>
                         </button>
                     </div>
-
                     <div class="w-full h-1 bg-blue-100 rounded-full my-8"></div>
-
-                    <!-- מילים -->
                     <div class="w-full">
                         <h3 class="text-center text-xl text-gray-500 mb-6 font-bold" id="modal-subtitle"></h3>
-                        <div id="words-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <!-- המילים יוזרקו לכאן -->
-                        </div>
+                        <div id="words-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="text-center text-blue-300 py-6 text-sm">
-        לוֹמְדִים עִבְרִית בְּכֵיף! 🇮🇱
-    </footer>
+    <!-- ========================= -->
+    <!-- תפריט ניווט תחתון (Bottom Nav) -->
+    <!-- ========================= -->
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-lg z-50 flex justify-around items-center p-3 pb-6 sm:pb-3">
+        <button onclick="switchTab('learn')" id="btn-tab-learn" class="flex flex-col items-center gap-1 text-blue-600 transition-colors">
+            <div class="p-2 rounded-xl bg-blue-100 transition-colors" id="icon-bg-learn">
+                <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-bold">לִימּוּד</span>
+        </button>
+
+        <button onclick="switchTab('quiz')" id="btn-tab-quiz" class="flex flex-col items-center gap-1 text-gray-400 transition-colors">
+            <div class="p-2 rounded-xl bg-transparent transition-colors" id="icon-bg-quiz">
+                <i data-lucide="gamepad-2" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs font-bold">מִשְׂחָק</span>
+        </button>
+    </div>
 
     <script>
-        // נתונים
+        // --- DATA ---
         const alphabetData = [
             { letter: 'א', name: 'אָלֶף', phonetic: 'Aleph', words: [{ text: 'אַרְנָב', emoji: '🐰' }, { text: 'אֲבַטִּיחַ', emoji: '🍉' }, { text: 'אַרְיֵה', emoji: '🦁' }] },
             { letter: 'ב', name: 'בֵּית', phonetic: 'Bet', words: [{ text: 'בַּיִת', emoji: '🏠' }, { text: 'בַּנָּנָה', emoji: '🍌' }, { text: 'בַּרְוָז', emoji: '🦆' }] },
@@ -138,73 +167,96 @@
 
         let selectedIndex = null;
         let voices = [];
+        let currentTab = 'learn';
+        let quizScore = 0;
+        let currentQuizTarget = null;
+        let isQuizLocked = false; // מונע לחיצות כפולות
 
-        // אתחול אייקונים
         lucide.createIcons();
 
-        // טעינת קולות
-        function loadVoices() {
-            voices = window.speechSynthesis.getVoices();
-        }
+        // --- AUDIO ENGINE ---
+        function loadVoices() { voices = window.speechSynthesis.getVoices(); }
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
 
-        // פונקציית הקראה חכמה: קודם מנסה mp3, ואם אין - עוברת למחשב
         function speak(text, filename) {
             window.speechSynthesis.cancel();
-            
-            // בדיקה אם סופק שם קובץ
             if (filename) {
-                // שינוי נתיב התיקייה במידת הצורך
-                const audioPath = 'audio/' + filename;
-                const audio = new Audio(audioPath);
-                
-                // מנסה לנגן את הקובץ
+                const audio = new Audio('audio/' + filename);
                 const playPromise = audio.play();
-                
                 if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        console.log('Playing audio file:', filename);
-                    }).catch(error => {
-                        // נכשל (כנראה הקובץ לא קיים) - חוזרים ל-TTS
-                        console.log('Audio file not found or failed, using TTS fallback for:', text);
+                    playPromise.catch(() => {
+                        console.log('Audio file missing, using TTS fallback');
                         speakTTS(text);
                     });
                 }
             } else {
-                // לא סופק שם קובץ - ישר ל-TTS
                 speakTTS(text);
             }
         }
 
-        // פונקציית העזר להקראת מחשב
         function speakTTS(text) {
             const utterance = new SpeechSynthesisUtterance(text);
             const isHebrew = /[\u0590-\u05FF]/.test(text);
-            const lang = isHebrew ? 'he-IL' : 'en-US';
             const targetVoice = voices.find(v => v.lang.includes(isHebrew ? 'he' : 'en'));
             if (targetVoice) utterance.voice = targetVoice;
-            utterance.lang = lang;
-            
-            if (isHebrew) {
-                utterance.pitch = 1.2;
-                utterance.rate = 0.8;
-            } else {
-                utterance.pitch = 1.1;
-                utterance.rate = 0.75;
-            }
+            utterance.lang = isHebrew ? 'he-IL' : 'en-US';
+            utterance.pitch = isHebrew ? 1.2 : 1.1;
+            utterance.rate = 0.8;
             window.speechSynthesis.speak(utterance);
         }
 
-        // יצירת הלוח
+        // --- NAVIGATION LOGIC ---
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // UI Updates
+            const learnView = document.getElementById('view-learn');
+            const quizView = document.getElementById('view-quiz');
+            const learnBtn = document.getElementById('btn-tab-learn');
+            const quizBtn = document.getElementById('btn-tab-quiz');
+            const learnIconBg = document.getElementById('icon-bg-learn');
+            const quizIconBg = document.getElementById('icon-bg-quiz');
+            const mainTitle = document.getElementById('main-title');
+            const subTitle = document.getElementById('sub-title');
+
+            if (tab === 'learn') {
+                learnView.classList.remove('hidden');
+                quizView.classList.add('hidden');
+                
+                learnBtn.classList.replace('text-gray-400', 'text-blue-600');
+                quizBtn.classList.replace('text-purple-600', 'text-gray-400');
+                
+                learnIconBg.classList.replace('bg-transparent', 'bg-blue-100');
+                quizIconBg.classList.replace('bg-purple-100', 'bg-transparent');
+
+                mainTitle.innerText = "כֵּיף עִם הָא-ב 🎨";
+                mainTitle.classList.replace('text-purple-600', 'text-blue-600');
+                subTitle.innerText = "לַחֲצוּ עַל אוֹת כְּדֵי לִשְׁמֹעַ וּלְשַׂחֵק!";
+            } else {
+                learnView.classList.add('hidden');
+                quizView.classList.remove('hidden');
+                
+                quizBtn.classList.replace('text-gray-400', 'text-purple-600');
+                learnBtn.classList.replace('text-blue-600', 'text-gray-400');
+                
+                quizIconBg.classList.replace('bg-transparent', 'bg-purple-100');
+                learnIconBg.classList.replace('bg-blue-100', 'bg-transparent');
+
+                mainTitle.innerText = "מִבְחָן הָאוֹתִיּוֹת 🏆";
+                mainTitle.classList.replace('text-blue-600', 'text-purple-600');
+                subTitle.innerText = "הַקְשִׁיבוּ וּמִצְאוּ אֶת הָאוֹת הַנְּכוֹנָה!";
+
+                startNewQuizRound();
+            }
+        }
+
+        // --- LEARN MODE LOGIC ---
         const board = document.getElementById('game-board');
         alphabetData.forEach((item, index) => {
             const btn = document.createElement('button');
             btn.className = "bg-white rounded-2xl shadow-lg border-b-4 border-blue-200 active:border-b-0 active:translate-y-1 transition-all duration-150 p-6 flex flex-col items-center justify-center hover:bg-yellow-50 focus:outline-none";
-            // כאן שינינו ל-mp3
-            const audioFilename = `letter_${index + 1}.mp3`;
             btn.onclick = () => openModal(index);
-            
             btn.innerHTML = `
                 <span class="text-6xl font-bold text-gray-800 mb-2">${item.letter}</span>
                 <span class="text-gray-400 text-sm font-medium">${item.name}</span>
@@ -212,7 +264,7 @@
             board.appendChild(btn);
         });
 
-        // לוגיקה של חלון קופץ (Modal)
+        // --- MODAL LOGIC (Learn Mode) ---
         const modal = document.getElementById('modal');
         const modalLetter = document.getElementById('modal-letter');
         const modalSubtitle = document.getElementById('modal-subtitle');
@@ -222,29 +274,20 @@
             selectedIndex = index;
             updateModalContent();
             modal.classList.remove('hidden');
-            
             const item = alphabetData[index];
-            const audioFilename = `letter_${index + 1}.mp3`; // שינוי ל-mp3
-            speak(item.phonetic, audioFilename);
+            speak(item.phonetic, `letter_${index + 1}.mp3`);
         }
 
         function updateModalContent() {
             if (selectedIndex === null) return;
             const item = alphabetData[selectedIndex];
-            
             modalLetter.innerText = item.letter;
             modalSubtitle.innerText = `מִילִּים הַמַּתְחִילוֹת בָּאוֹת ${item.letter}:`;
-            
             wordsContainer.innerHTML = '';
             item.words.forEach((word, wordIndex) => {
                 const wordBtn = document.createElement('button');
                 wordBtn.className = "flex flex-col items-center justify-center bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all active:scale-95 shadow-sm";
-                
-                // שינוי ל-mp3
-                const audioFilename = `word_${selectedIndex + 1}_${wordIndex + 1}.mp3`;
-                
-                wordBtn.onclick = () => speak(word.text, audioFilename);
-                
+                wordBtn.onclick = () => speak(word.text, `word_${selectedIndex + 1}_${wordIndex + 1}.mp3`);
                 wordBtn.innerHTML = `
                     <span class="text-6xl mb-3 filter drop-shadow-sm">${word.emoji}</span>
                     <span class="text-2xl font-bold text-gray-700">${word.text}</span>
@@ -262,8 +305,7 @@
         function replayLetter() {
             if (selectedIndex !== null) {
                 const item = alphabetData[selectedIndex];
-                const audioFilename = `letter_${selectedIndex + 1}.mp3`; // שינוי ל-mp3
-                speak(item.phonetic, audioFilename);
+                speak(item.phonetic, `letter_${selectedIndex + 1}.mp3`);
             }
         }
 
@@ -272,9 +314,7 @@
             if (selectedIndex !== null) {
                 selectedIndex = (selectedIndex + 1) % alphabetData.length;
                 updateModalContent();
-                const item = alphabetData[selectedIndex];
-                const audioFilename = `letter_${selectedIndex + 1}.mp3`; // שינוי ל-mp3
-                speak(item.phonetic, audioFilename);
+                replayLetter();
             }
         }
 
@@ -283,9 +323,139 @@
             if (selectedIndex !== null) {
                 selectedIndex = (selectedIndex - 1 + alphabetData.length) % alphabetData.length;
                 updateModalContent();
-                const item = alphabetData[selectedIndex];
-                const audioFilename = `letter_${selectedIndex + 1}.mp3`; // שינוי ל-mp3
-                speak(item.phonetic, audioFilename);
+                replayLetter();
+            }
+        }
+
+        // --- QUIZ MODE LOGIC ---
+        function startNewQuizRound() {
+            isQuizLocked = false;
+            document.getElementById('feedback-msg').innerText = "";
+            document.getElementById('feedback-msg').className = "text-center mt-6 h-8 font-bold text-xl";
+
+            // 1. Pick correct answer
+            const targetIndex = Math.floor(Math.random() * alphabetData.length);
+            currentQuizTarget = alphabetData[targetIndex];
+
+            // 2. Pick 3 distractions
+            let options = [currentQuizTarget];
+            while (options.length < 4) {
+                const randomItem = alphabetData[Math.floor(Math.random() * alphabetData.length)];
+                if (!options.includes(randomItem)) {
+                    options.push(randomItem);
+                }
+            }
+
+            // 3. Shuffle
+            options.sort(() => Math.random() - 0.5);
+
+            // 4. Render Options
+            const quizContainer = document.getElementById('quiz-options');
+            quizContainer.innerHTML = '';
+            
+            // Update prompt text
+            document.getElementById('quiz-target-letter').innerText = "?";
+
+            options.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white border-2 border-purple-100 rounded-2xl p-6 shadow-sm hover:bg-purple-50 active:scale-95 transition-all text-5xl font-bold text-gray-700 h-32 flex items-center justify-center";
+                btn.innerText = item.letter;
+                
+                // בדיקת תשובה
+                btn.onclick = (e) => checkAnswer(item, btn);
+                quizContainer.appendChild(btn);
+            });
+
+            // 5. Play Audio
+            playQuizPrompt();
+        }
+
+        function playQuizPrompt() {
+            if (!currentQuizTarget) return;
+            
+            // נתיב לקובץ ההקלטה של השאלה
+            const promptFile = 'audio/quiz_prompt.mp3';
+            const promptAudio = new Audio(promptFile);
+
+            // 1. הגדרת רצף: כשקובץ השאלה מסתיים -> מנגנים את האות
+            promptAudio.onended = function() {
+                const index = alphabetData.indexOf(currentQuizTarget);
+                // ניגון האות (מהקובץ או TTS)
+                speak(currentQuizTarget.phonetic, `letter_${index + 1}.mp3`);
+            };
+
+            // 2. טיפול בשגיאות (אם הקובץ לא קיים -> חוזרים ל-TTS הישן)
+            promptAudio.onerror = function() {
+                console.log('Quiz prompt file missing, using TTS fallback');
+                const questionStart = new SpeechSynthesisUtterance("אֵיפֹה הָאוֹת");
+                questionStart.lang = 'he-IL';
+                questionStart.rate = 0.9;
+                
+                questionStart.onend = function() {
+                    const index = alphabetData.indexOf(currentQuizTarget);
+                    speak(currentQuizTarget.phonetic, `letter_${index + 1}.mp3`);
+                };
+                
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(questionStart);
+            };
+
+            // 3. התחלת הניגון
+            promptAudio.play().catch(err => {
+                console.log('Audio play failed:', err);
+                // במקרה של שגיאת ניגון (למשל חסימת דפדפן), מפעילים את ה-Fallback
+                promptAudio.onerror();
+            });
+        }
+
+        function checkAnswer(selectedItem, btnElement) {
+            if (isQuizLocked) return;
+
+            if (selectedItem === currentQuizTarget) {
+                // SUCCESS
+                isQuizLocked = true;
+                quizScore += 1;
+                document.getElementById('score-display').innerText = quizScore;
+                
+                // Visuals
+                btnElement.classList.remove('bg-white', 'border-purple-100');
+                btnElement.classList.add('bg-green-100', 'border-green-400', 'text-green-700', 'scale-110');
+                document.getElementById('quiz-target-letter').innerText = currentQuizTarget.letter;
+                
+                const feedback = document.getElementById('feedback-msg');
+                feedback.innerText = "כֹּל הַכָּבוֹד! 👏";
+                feedback.classList.add('text-green-600', 'bounce');
+
+                // Confetti
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+
+                // Audio Success
+                const utterance = new SpeechSynthesisUtterance("מְצוּיָּן!");
+                utterance.lang = 'he-IL';
+                window.speechSynthesis.speak(utterance);
+
+                // Next round delay
+                setTimeout(() => {
+                    startNewQuizRound();
+                }, 2500);
+
+            } else {
+                // FAILURE
+                btnElement.classList.add('bg-red-50', 'border-red-200', 'shake');
+                setTimeout(() => btnElement.classList.remove('shake'), 500);
+                
+                const feedback = document.getElementById('feedback-msg');
+                feedback.innerText = "נַסּוּ שׁוּב...";
+                feedback.classList.add('text-red-400');
+                
+                // Audio Fail
+                const utterance = new SpeechSynthesisUtterance("לֹא נוֹרָא");
+                utterance.lang = 'he-IL';
+                window.speechSynthesis.speak(utterance);
             }
         }
     </script>
