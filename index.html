@@ -149,22 +149,43 @@
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
 
-        // פונקציית הקראה
-        function speak(text) {
+        // פונקציית הקראה חכמה: קודם מנסה mp3, ואם אין - עוברת למחשב
+        function speak(text, filename) {
             window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
             
-            // זיהוי עברית
+            // בדיקה אם סופק שם קובץ
+            if (filename) {
+                // שינוי נתיב התיקייה במידת הצורך
+                const audioPath = 'audio/' + filename;
+                const audio = new Audio(audioPath);
+                
+                // מנסה לנגן את הקובץ
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('Playing audio file:', filename);
+                    }).catch(error => {
+                        // נכשל (כנראה הקובץ לא קיים) - חוזרים ל-TTS
+                        console.log('Audio file not found or failed, using TTS fallback for:', text);
+                        speakTTS(text);
+                    });
+                }
+            } else {
+                // לא סופק שם קובץ - ישר ל-TTS
+                speakTTS(text);
+            }
+        }
+
+        // פונקציית העזר להקראת מחשב
+        function speakTTS(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
             const isHebrew = /[\u0590-\u05FF]/.test(text);
             const lang = isHebrew ? 'he-IL' : 'en-US';
-            
-            // מציאת קול מתאים
             const targetVoice = voices.find(v => v.lang.includes(isHebrew ? 'he' : 'en'));
             if (targetVoice) utterance.voice = targetVoice;
-            
             utterance.lang = lang;
             
-            // התאמות לילדים
             if (isHebrew) {
                 utterance.pitch = 1.2;
                 utterance.rate = 0.8;
@@ -172,7 +193,6 @@
                 utterance.pitch = 1.1;
                 utterance.rate = 0.75;
             }
-            
             window.speechSynthesis.speak(utterance);
         }
 
@@ -181,6 +201,8 @@
         alphabetData.forEach((item, index) => {
             const btn = document.createElement('button');
             btn.className = "bg-white rounded-2xl shadow-lg border-b-4 border-blue-200 active:border-b-0 active:translate-y-1 transition-all duration-150 p-6 flex flex-col items-center justify-center hover:bg-yellow-50 focus:outline-none";
+            // כאן שינינו ל-mp3
+            const audioFilename = `letter_${index + 1}.mp3`;
             btn.onclick = () => openModal(index);
             
             btn.innerHTML = `
@@ -202,7 +224,8 @@
             modal.classList.remove('hidden');
             
             const item = alphabetData[index];
-            speak(item.phonetic);
+            const audioFilename = `letter_${index + 1}.mp3`; // שינוי ל-mp3
+            speak(item.phonetic, audioFilename);
         }
 
         function updateModalContent() {
@@ -213,10 +236,14 @@
             modalSubtitle.innerText = `מִילִּים הַמַּתְחִילוֹת בָּאוֹת ${item.letter}:`;
             
             wordsContainer.innerHTML = '';
-            item.words.forEach(word => {
+            item.words.forEach((word, wordIndex) => {
                 const wordBtn = document.createElement('button');
                 wordBtn.className = "flex flex-col items-center justify-center bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all active:scale-95 shadow-sm";
-                wordBtn.onclick = () => speak(word.text);
+                
+                // שינוי ל-mp3
+                const audioFilename = `word_${selectedIndex + 1}_${wordIndex + 1}.mp3`;
+                
+                wordBtn.onclick = () => speak(word.text, audioFilename);
                 
                 wordBtn.innerHTML = `
                     <span class="text-6xl mb-3 filter drop-shadow-sm">${word.emoji}</span>
@@ -234,7 +261,9 @@
 
         function replayLetter() {
             if (selectedIndex !== null) {
-                speak(alphabetData[selectedIndex].phonetic);
+                const item = alphabetData[selectedIndex];
+                const audioFilename = `letter_${selectedIndex + 1}.mp3`; // שינוי ל-mp3
+                speak(item.phonetic, audioFilename);
             }
         }
 
@@ -243,7 +272,9 @@
             if (selectedIndex !== null) {
                 selectedIndex = (selectedIndex + 1) % alphabetData.length;
                 updateModalContent();
-                speak(alphabetData[selectedIndex].phonetic);
+                const item = alphabetData[selectedIndex];
+                const audioFilename = `letter_${selectedIndex + 1}.mp3`; // שינוי ל-mp3
+                speak(item.phonetic, audioFilename);
             }
         }
 
@@ -252,7 +283,9 @@
             if (selectedIndex !== null) {
                 selectedIndex = (selectedIndex - 1 + alphabetData.length) % alphabetData.length;
                 updateModalContent();
-                speak(alphabetData[selectedIndex].phonetic);
+                const item = alphabetData[selectedIndex];
+                const audioFilename = `letter_${selectedIndex + 1}.mp3`; // שינוי ל-mp3
+                speak(item.phonetic, audioFilename);
             }
         }
     </script>
